@@ -1,0 +1,221 @@
+<script src="https://unpkg.com/vuex@3"></script>
+
+<script>
+/**
+ * AUTH HELPER
+ */
+function getValidUser() {
+  const raw = localStorage.getItem('bizflow_user');
+  if (!raw) return null;
+
+  try {
+    const user = JSON.parse(raw);
+    if (Date.now() > user.expiry) {
+      localStorage.removeItem('bizflow_user');
+      return null;
+    }
+    return user;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * VUEX STORE
+ */
+var store = new Vuex.Store({
+  state: {
+    user: getValidUser(),
+    loading: false,
+
+    snackbar: {
+      show: false,
+      message: '',
+      color: 'success',
+      timeout: 3000
+    },
+
+    // Data Buckets
+    sales: [],
+    sales_orders: [],
+    purchase: [],
+    purchase_orders: [],
+    stock: [],
+    outstandings: []
+  },
+
+  mutations: {
+    SET_USER(state, user) {
+      state.user = user;
+      if (user) {
+        // 2-hour session expiry
+        const expiry = Date.now() + (2 * 60 * 60 * 1000);
+        localStorage.setItem('bizflow_user', JSON.stringify({ ...user, expiry }));
+      } else {
+        localStorage.removeItem('bizflow_user');
+      }
+    },
+
+    SET_LOADING(state, value) {
+      state.loading = value;
+    },
+
+    SHOW_SNACKBAR(state, payload) {
+      state.snackbar = {
+        show: true,
+        message: payload.message || '',
+        color: payload.color || 'success',
+        timeout: payload.timeout || 3000
+      };
+    },
+
+    SET_DATA(state, { key, data }) {
+      if (state.hasOwnProperty(key)) {
+        state[key] = data;
+      }
+    }
+  },
+
+  actions: {
+    async login({ commit }, { identifier, password }) {
+      commit('SET_LOADING', true);
+      return new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(res => {
+            commit('SET_LOADING', false);
+            if (res && res.success) {
+              commit('SET_USER', res.user);
+              resolve(res.user);
+            } else {
+              commit('SHOW_SNACKBAR', { 
+                message: res.message || 'Invalid credentials', 
+                color: 'error' 
+              });
+              reject(res.message);
+            }
+          })
+          .withFailureHandler(err => {
+            commit('SET_LOADING', false);
+            reject(err);
+          })
+          .authUser(identifier, password); 
+      });
+    },
+
+    signup({ commit }, userObj) {
+      commit('SET_LOADING', true);
+      return new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(res => {
+            commit('SET_LOADING', false);
+            if (res && res.success) resolve(res);
+            else reject(res.message || 'Signup failed');
+          })
+          .withFailureHandler(err => {
+            commit('SET_LOADING', false);
+            reject(err);
+          })
+          .signupUser(userObj);
+      });
+    },
+
+    logout({ commit }) {
+      commit('SET_USER', null);
+      commit('SHOW_SNACKBAR', { message: 'Logged out successfully', color: 'info' });
+      setTimeout(() => { window.location.hash = '#/login'; }, 200);
+    },
+
+    loadVouchers({ commit }, type) {
+      commit('SET_LOADING', true);
+      
+      google.script.run
+        .withSuccessHandler(data => {
+          const rows = data || [];
+          const mapping = {
+            'Sales': 'sales',
+            'Sales Order': 'sales_orders',
+            'Purchase': 'purchase',
+            'Purchase Order': 'purchase_orders'
+          };
+          
+          if (mapping[type]) {
+            commit('SET_DATA', { key: mapping[type], data: rows });
+          }
+          commit('SET_LOADING', false);
+        })
+        .withFailureHandler(err => {
+          console.error('Voucher load failed:', err);
+          commit('SET_LOADING', false);
+        })
+        .getVoucher(type, { order: 'voucher_date', columns: '*' });
+    },
+
+    loadOutstandings({ commit }) {
+      commit('SET_LOADING', true);
+      google.script.run
+        .withSuccessHandler(data => {
+          commit('SET_DATA', { key: 'outstandings', data: data || [] });
+          commit('SET_LOADING', false);
+        })
+        .withFailureHandler(() => commit('SET_LOADING', false))
+        .getView('outstanding');
+    },
+
+    loadStock({ commit }) {
+      commit('SET_LOADING', true);
+      google.script.run
+        .withSuccessHandler(data => {
+          commit('SET_DATA', { key: 'stock', data: data || [] });
+          commit('SET_LOADING', false);
+        })
+        .withFailureHandler(() => commit('SET_LOADING', false))
+        .getView('stock');
+    },
+
+    getInventoryItems(_, guid) {
+      return new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(data => resolve(data || []))
+          .withFailureHandler(reject)
+          .getItem(guid);
+      });
+    }
+  }
+});
+
+/**
+ * GLOBAL MIXIN
+ */
+Vue.mixin({
+  methods: {
+    $notify(message, color = 'success', timeout = 3000) {
+      store.commit('SHOW_SNACKBAR', { message, color, timeout });
+    },
+
+    formatNumber(val) {
+      return new Intl.NumberFormat('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(Number(val) || 0);
+    },
+
+    formatDate(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-GB').replace(/\//g, '-'); 
+    },
+
+    prettify(value) {
+      const num = Number(value);
+      if (isNaN(num)) return value;
+
+      if (num >= 1e7) return (num / 1e7).toFixed(2) + ' Cr';
+      if (num >= 1e5) return (num / 1e5).toFixed(2) + ' Lkh';
+      if (num >= 1e3) return (num / 1e3).toFixed(2) + ' K';
+
+      return num.toLocaleString('en-IN');
+    }
+  }
+});
+</script>

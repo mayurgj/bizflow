@@ -1,0 +1,128 @@
+<script>
+const DashboardView = {
+  template: `
+    <v-row>
+      <v-col cols="12" md="4">
+        <purchase-summary-card></purchase-summary-card>
+      </v-col>
+    </v-row>
+  `
+};
+
+const PurcCard = Vue.component('purchase-summary-card', {
+  template: `
+    <v-card outlined class="rounded-lg pa-4 purchase-tile" min-height="300">
+      <div class="d-flex justify-space-between align-center mb-4">
+        <div class="text-h6 font-weight-bold">Purchase</div>
+        
+        <div class="caption cursor-pointer">
+          <span 
+            @click="setChartType('bar')" 
+            :class="chartType === 'bar' ? 'primary--text font-weight-black' : 'grey--text'"
+            style="cursor: pointer"
+          >Bar</span>
+          <span class="mx-1 grey--text">/</span>
+          <span 
+            @click="setChartType('line')" 
+            :class="chartType === 'line' ? 'primary--text font-weight-black' : 'grey--text'" 
+            class="font-italic"
+            style="cursor: pointer"
+          >Chart</span>
+        </div>
+      </div>
+
+      <div class="chart-container" style="position: relative; height:180px;">
+        <canvas ref="purchaseChart"></canvas>
+      </div>
+
+      <div class="d-flex justify-end mt-2">
+        <router-link to="/purchase" class="text-decoration-none primary--text font-italic font-weight-bold">
+          View
+        </router-link>
+      </div>
+    </v-card>
+  `,
+  data() {
+    return {
+      chart: null,
+      chartType: 'line' // Initial state
+    };
+  },
+  computed: {
+    ...Vuex.mapState(['purchase']),
+    fiscalData() {
+      // April (3) to March (2) logic
+      const months = ["04", "05", "06", "07", "08", "09", "10", "11", "12", "01", "02", "03"];
+      let summary = {};
+      months.forEach(m => summary[m] = 0);
+
+      this.purchase.forEach(item => {
+        const date = new Date(item.voucher_date);
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        if (summary.hasOwnProperty(month)) {
+          summary[month] += (Number(item.total_amount) || 0);
+        }
+      });
+
+      return {
+        labels: months,
+        values: months.map(m => summary[m])
+      };
+    }
+  },
+  watch: {
+    purchase: {
+      deep: true,
+      handler() { this.renderChart(); }
+    }
+  },
+  mounted() {
+    this.renderChart();
+    if (this.purchase.length === 0) {
+      this.$store.dispatch('loadVouchers', 'Purchase');
+    }
+  },
+  methods: {
+    setChartType(type) {
+      if (this.chartType === type) return;
+      this.chartType = type;
+      this.renderChart(); // Completely re-render to change chart style
+    },
+    renderChart() {
+      // Destroy existing chart instance to prevent memory leaks and overlay bugs
+      if (this.chart) {
+        this.chart.destroy();
+      }
+
+      const ctx = this.$refs.purchaseChart.getContext('2d');
+      const primaryColor = this.$vuetify.theme.currentTheme.primary;
+
+      this.chart = new Chart(ctx, {
+        type: this.chartType,
+        data: {
+          labels: this.fiscalData.labels,
+          datasets: [{
+            data: this.fiscalData.values,
+            borderColor: primaryColor,
+            backgroundColor: this.chartType === 'bar' ? primaryColor : primaryColor + '20',
+            borderWidth: 2,
+            tension: 0.4,
+            fill: this.chartType === 'line' ? false : true // Fill for bars, line stays clean
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { beginAtZero: true, ticks: { maxTicksLimit: 5 } }
+          }
+        }
+      });
+    }
+  }
+});
+
+
+</script>

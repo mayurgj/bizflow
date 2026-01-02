@@ -1,0 +1,248 @@
+<script>
+const AppLayout = Vue.component('app-layout', {
+  data() {
+    return {
+      drawer: null, // 'null' helps Vuetify decide based on screen size
+      appIcon: 'wind-power',
+      appTitle: 'BizFlow',
+      subTitle: 'CRM Dashboard'
+    }
+  },
+
+  computed: {
+    // Standard mapping
+    ...Vuex.mapState(['loading', 'user']),
+    
+    isDark() {
+      return this.$vuetify.theme.dark;
+    },
+    
+    // Corrected Snackbar handling
+    snackbar: {
+      get() { return this.$store.state.snackbar; },
+      set(val) { 
+        // We only care about setting 'show' to false when the user closes it
+        if (!val) {
+          this.$store.commit('SET_DATA', { 
+            key: 'snackbar', 
+            data: { ...this.$store.state.snackbar, show: false } 
+          });
+        }
+      }
+    },
+
+    pageTitle() {
+      return this.$route.meta.title || '';
+    },
+
+    isAuthPage() {
+      return ['/login', '/signup'].includes(this.$route.path);
+    },
+
+    // REACTIVE: Pulls directly from the Vuex store
+    currentUser() {
+      return this.user || { name: 'Guest User', email: '' };
+    },
+
+    userInitial() {
+      const name = this.currentUser.name || '';
+      if (!name) return '?';
+      const parts = name.trim().split(/\s+/);
+      if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+      return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+    },
+
+    menuItems() {
+      // Use this.$router.options.routes or a hardcoded list for better control
+      const routes = this.$router.options.routes.filter(r => r.meta && !r.meta.hideNav);
+      const menu = [];
+      const groups = {};
+
+      routes.forEach(route => {
+        const groupName = route.meta.group;
+        if (groupName) {
+          if (!groups[groupName]) {
+            const groupIcons = {
+              'Sales': 'mdi-trending-up',
+              'Purchase': 'mdi-cart-outline',
+              'Inventory': 'mdi-archive-outline',
+              'Reports': 'mdi-file-chart-outline'
+            };
+            groups[groupName] = { 
+              title: groupName, 
+              isGroup: true, 
+              items: [], 
+              icon: groupIcons[groupName] || 'mdi-folder-outline' 
+            };
+            menu.push(groups[groupName]);
+          }
+          groups[groupName].items.push(route);
+        } else {
+          menu.push({ ...route, isGroup: false });
+        }
+      });
+      return menu;
+    }
+  },
+
+  methods: {
+    toggleTheme() {
+      this.$vuetify.theme.dark = !this.$vuetify.theme.dark;
+    },
+
+    refreshCurrentPage() {
+      const actions = this.$route.meta.refreshActions;
+      if (actions && Array.isArray(actions)) {
+        this.$notify('Refreshing data...', 'info', 2000);
+        actions.forEach(action => {
+          // Safer way to dispatch without hitting private _actions
+          this.$store.dispatch(action).catch(e => console.warn(`Action ${action} failed`, e));
+        });
+      } else {
+        this.$notify('Nothing to refresh on this page', 'warning');
+      }
+    }
+  },
+
+  template: `
+    <v-app>
+      <v-navigation-drawer v-if="!isAuthPage" app v-model="drawer" width="280" floating border="right">
+        <v-list-item class="px-4 py-4">
+          <v-list-item-avatar color="primary" size="40">
+            <v-icon dark size="24">mdi-{{ appIcon }}</v-icon>
+          </v-list-item-avatar>
+          <v-list-item-content>
+            <v-list-item-title class="text-h6 font-weight-bold">{{ appTitle }}</v-list-item-title>
+            <v-list-item-subtitle class="caption">{{ subTitle }}</v-list-item-subtitle>
+          </v-list-item-content>
+        </v-list-item>
+
+        <v-divider></v-divider>
+
+        <v-list flat dense nav class="mt-2">
+          <template v-for="(item, index) in menuItems">
+            <v-list-group
+              v-if="item.isGroup"
+              :key="'group-' + index"
+              :prepend-icon="item.icon"
+              color="primary"
+              no-action
+            >
+              <template v-slot:activator>
+                <v-list-item-content>
+                  <v-list-item-title class="font-weight-medium">{{ item.title }}</v-list-item-title>
+                </v-list-item-content>
+              </template>
+
+              <v-list-item 
+                v-for="subItem in item.items" 
+                :key="subItem.path" 
+                :to="subItem.path" 
+                link
+              >
+                <v-list-item-content>
+                  <v-list-item-title>{{ subItem.meta.title }}</v-list-item-title>
+                </v-list-item-content>
+              </v-list-item>
+            </v-list-group>
+
+            <v-list-item 
+              v-else 
+              :key="'item-' + index" 
+              :to="item.path" 
+              link 
+              color="primary"
+            >
+              <v-list-item-icon>
+                <v-icon>{{ item.meta.icon }}</v-icon>
+              </v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title class="font-weight-medium">{{ item.meta.title }}</v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
+          </template>
+        </v-list>
+
+        <template v-slot:append>
+          <v-divider></v-divider>
+          <v-list dense nav>
+            <v-list-item @click="toggleTheme">
+              <v-list-item-icon>
+                <v-icon>{{ isDark ? 'mdi-white-balance-sunny' : 'mdi-weather-night' }}</v-icon>
+              </v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title>{{ isDark ? 'Light Mode' : 'Dark Mode' }}</v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
+
+            <v-list-item @click="$store.dispatch('logout')" class="mb-2">
+              <v-list-item-avatar size="32" color="grey lighten-3">
+                 <span class="primary--text font-weight-bold" style="font-size: 12px">{{ userInitial }}</span>
+              </v-list-item-avatar>
+              <v-list-item-content>
+                <v-list-item-title class="font-weight-medium">Logout</v-list-item-title>
+                <v-list-item-subtitle class="caption">{{ currentUser.email }}</v-list-item-subtitle>
+              </v-list-item-content>
+              <v-list-item-action>
+                <v-icon small>mdi-logout</v-icon>
+              </v-list-item-action>
+            </v-list-item>
+          </v-list>
+        </template>
+      </v-navigation-drawer>
+
+      <v-app-bar 
+        v-if="!isAuthPage" 
+        app 
+        flat 
+        :color="isDark ? '#121212' : 'white'" 
+        :dark="isDark"
+        style="border-bottom: 1px solid rgba(0,0,0,0.12) !important"
+      >
+        <v-app-bar-nav-icon @click="drawer = !drawer" />
+        <v-toolbar-title class="font-weight-bold" :class="isDark ? 'white--text' : 'primary--text'">
+          {{ pageTitle || appTitle }}
+        </v-toolbar-title>
+        <v-spacer></v-spacer>
+        <v-btn icon color="primary" :loading="loading" @click="refreshCurrentPage">
+          <v-icon>mdi-refresh</v-icon>
+        </v-btn>
+      </v-app-bar>
+
+      <v-main :class="isDark ? '' : 'grey lighten-4'">
+        <v-container fluid :class="isAuthPage ? 'fill-height justify-center' : 'pa-4'">
+          <transition name="fade" mode="out-in">
+            <router-view />
+          </transition>
+        </v-container>
+      </v-main>
+
+      <v-snackbar v-model="snackbar.show" :timeout="snackbar.timeout" :color="snackbar.color" top right outlined app>
+        <v-icon left :color="snackbar.color">
+          {{ snackbar.color === 'success' ? 'mdi-check-circle' : 'mdi-alert-circle' }}
+        </v-icon>
+        <span class="font-weight-bold">{{ snackbar.message }}</span>
+        <template v-slot:action="{ attrs }">
+          <v-btn icon v-bind="attrs" @click="snackbar.show = false">
+            <v-icon small :color="snackbar.color">mdi-close</v-icon>
+          </v-btn>
+        </template>
+      </v-snackbar>
+    </v-app>
+  `
+});
+
+var ComingSoon = Vue.component('coming-soon', {
+                  template: `
+                    <v-card flat class="d-flex flex-column align-center justify-center pa-10 transparent">
+                      <v-icon size="64" color="grey lighten-1">mdi-hammer-wrench</v-icon>
+                      <div class="text-h5 grey--text text--darken-1 mt-4 font-weight-bold">
+                        Coming Soon
+                      </div>
+                      <div class="text-body-1 grey--text mt-2">
+                        We are working hard to bring this feature to life.
+                      </div>
+                    </v-card>
+                  `
+});
+</script>

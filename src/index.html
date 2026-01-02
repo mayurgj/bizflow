@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <!-- Vue version 2.x.x -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+    
+    <!-- Chart JS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script> 
+
+    <?!= include_('style') ?>
+  </head>
+  <body>
+
+    <div id="app">
+      <app-layout></app-layout>
+    </div>
+
+    <?!= include_('vue/store') ?>
+    <?!= include_('vue/vuetify') ?>
+    <?!= include_('vue/router') ?>
+    <?!= include_('vue/components') ?>
+    <script>
+      var app = new Vue({
+        el: '#app',
+        vuetify,
+        store,
+        router
+      })
+    </script>
+
+
+  </body>
+</html>

@@ -1,0 +1,58 @@
+<script>
+  const PurchaseView = {
+    template: `
+      <v-card outlined class="rounded-lg">
+        <v-card-title class="font-weight-bold primary--text">
+          Purchase Transactions
+          <v-spacer></v-spacer>
+          <v-text-field
+            v-model="search"
+            append-icon="mdi-magnify"
+            label="Search Transactions"
+            single-line
+            hide-details
+            dense
+            outlined
+          ></v-text-field>
+        </v-card-title>
+
+        <v-data-table
+          :headers="headers"
+          :items="purchase"
+          :search="search"
+          :loading="loading"
+          class="elevation-0"
+          no-data-text="No purchase records found. Click refresh to load data."
+        >
+          <template v-slot:item.amount="{ item }">
+            <span class="font-weight-medium">{{ formatNumber(item.amount) }}</span>
+          </template>
+
+          <template v-slot:item.voucher_date="{ item }">
+            {{ formatDate(item.voucher_date) }}
+          </template>
+        </v-data-table>
+      </v-card>
+    `,
+    data() {
+      return {
+        search: '',
+        headers: [
+          { text: 'Date', value: 'voucher_date', width: '120px' },
+          { text: 'Voucher No', value: 'voucher_number' },
+          { text: 'Party Name', value: 'party_name' },
+          { text: 'Amount', value: 'total_amount', align: 'right' }
+        ]
+      };
+    },
+    computed: {
+      ...Vuex.mapState(['purchase', 'loading'])
+    },
+    created() {
+      // Logic: If the store is empty, fetch data from Supabase via GAS
+      if (this.purchase.length === 0) {
+        this.$store.dispatch('loadVouchers', 'Purchase');
+      }
+    }
+  };
+  </script>

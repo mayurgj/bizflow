@@ -1,0 +1,97 @@
+<script src="https://unpkg.com/vue-router@3"></script>
+
+<?!= include_('vue/pages/Auth') ?>
+<?!= include_('vue/pages/Dashboard') ?>
+<?!= include_('vue/pages/Purchase') ?>
+
+<script>
+
+const routes = [
+  {
+    path: '/',
+    redirect: '/dashboard'
+  },
+  {
+    path: '/dashboard',
+    name: 'dashboard',
+    component: DashboardView,
+    meta: {
+      icon: 'mdi-view-dashboard',
+      title: 'Dashboard',
+      requiresAuth: true,
+      refreshActions: ['loadStock', 'loadOutstandings'] 
+    }
+  },
+  {
+    path: '/purchase',
+    name: 'purchase',
+    component: PurchaseView,
+    meta: {
+      title: 'Purchase',
+      icon: 'mdi-cart-outline',
+      requiresAuth: true,
+      group: 'Purchase', // This ensures it shows under the Purchase group in your sidebar
+      refreshActions: ['loadVouchers'] // The AppLayout will call this action on refresh
+    }
+  },
+  {
+    path: '/login',
+    name: 'login',
+    component: LoginView,
+    meta: {
+      hideNav: true,
+      title: 'Login',
+      requiresAuth: false
+    }
+  },
+  {
+    path: '/signup',
+    name: 'signup',
+    component: SignupView,
+    meta: {
+      hideNav: true,
+      title: 'Sign Up',
+      requiresAuth: false
+    }
+  },
+  // Catch-all route
+  {
+    path: '*',
+    redirect: '/dashboard'
+  }
+];
+
+/**
+ * ROUTER INSTANCE
+ */
+const router = new VueRouter({
+  mode: 'hash',
+  routes,
+  // Ensure page scrolls to top on navigation
+  scrollBehavior: () => ({ y: 0 })
+});
+
+/**
+ * NAVIGATION GUARDS
+ */
+router.beforeEach((to, from, next) => {
+  const user = store.state.user || getValidUser();
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth !== false);
+  if (requiresAuth && !user) {
+    next({ name: 'login' });
+  } else if (user && (to.name === 'login' || to.name === 'signup')) {
+    next({ name: 'dashboard' });
+  } else {
+    next();
+  }
+});
+
+router.afterEach(to => {
+  if (to.meta.title) {
+    document.title = `BizFlow | ${to.meta.title}`;
+  }
+  if (window.google && google.script && google.script.history) {
+    google.script.history.push(null, null, to.path);
+  }
+});
+</script>

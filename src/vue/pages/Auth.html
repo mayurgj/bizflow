@@ -1,0 +1,152 @@
+<script>
+
+/**
+ * LOGIN VIEW
+ */
+const LoginView = {
+  data() {
+    return {
+      identifier: '',
+      password: '',
+      showPassword: false, // UI efficiency: let users see what they type
+      error: ''
+    }
+  },
+  computed: {
+    loading() { return this.$store.state.loading; }
+  },
+  template: `
+    <v-card width="400" class="pa-8 rounded-xl" elevation="12">
+      <div class="text-center mb-6">
+        <v-icon size="64" color="primary">mdi-shield-lock</v-icon>
+        <h2 class="mt-4">Welcome Back</h2>
+        <p class="grey--text">Login to manage your BizFlow</p>
+      </div>
+
+      <v-alert v-if="error" type="error" dense text dismissible @input="error = ''">
+        {{ error }}
+      </v-alert>
+
+      <v-form @submit.prevent="handleLogin">
+        <v-text-field 
+          v-model="identifier" 
+          label="Username or Email" 
+          outlined 
+          prepend-inner-icon="mdi-account"
+          :disabled="loading"
+        ></v-text-field>
+
+        <v-text-field 
+          v-model="password" 
+          label="Password" 
+          :type="showPassword ? 'text' : 'password'" 
+          outlined 
+          prepend-inner-icon="mdi-lock"
+          :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+          @click:append="showPassword = !showPassword"
+          :disabled="loading"
+        ></v-text-field>
+
+        <v-btn 
+          block 
+          color="primary" 
+          x-large 
+          class="rounded-lg" 
+          :loading="loading" 
+          type="submit"
+          :disabled="!identifier || !password"
+        >
+          Login
+        </v-btn>
+      </v-form>
+
+      <div class="text-center mt-6">
+        <span>Don't have an account? </span>
+        <router-link to="/signup" class="text-decoration-none font-weight-bold">Sign Up</router-link>
+      </div>
+    </v-card>
+  `,
+  methods: {
+    async handleLogin() {
+      this.error = '';
+      try {
+        await this.$store.dispatch('login', { 
+          identifier: this.identifier, 
+          password: this.password 
+        });
+        this.$notify(`Welcome back!`, 'success');
+        this.$router.push('/');
+      } catch (err) {
+        this.error = err;
+      }
+    }
+  }
+};
+
+/**
+ * SIGNUP VIEW
+ */
+const SignupView = {
+  data() {
+    return {
+      form: { full_name: '', email_id: '', user_name: '', password: '' },
+      localLoading: false, // Used specifically for signup button
+      error: ''
+    }
+  },
+  template: `
+    <v-card width="450" class="pa-8 rounded-xl" elevation="12">
+      <h2 class="text-center mb-6">Create Account</h2>
+      
+      <v-alert v-if="error" type="error" dense text dismissible @input="error = ''">
+        {{ error }}
+      </v-alert>
+
+      <v-form @submit.prevent="handleSignup">
+        <v-text-field v-model="form.full_name" label="Full Name" outlined dense :disabled="localLoading"></v-text-field>
+        <v-text-field v-model="form.email_id" label="Email" outlined dense :disabled="localLoading"></v-text-field>
+        <v-text-field v-model="form.user_name" label="Username" outlined dense :disabled="localLoading"></v-text-field>
+        <v-text-field v-model="form.password" label="Password" type="password" outlined dense :disabled="localLoading"></v-text-field>
+
+        <v-btn 
+          block 
+          color="success" 
+          large 
+          class="rounded-lg" 
+          :loading="localLoading" 
+          type="submit"
+        >
+          Register
+        </v-btn>
+      </v-form>
+
+      <div class="text-center mt-4">
+        <router-link to="/login" class="text-decoration-none">Already have an account? Login</router-link>
+      </div>
+    </v-card>
+  `,
+  methods: {
+    async handleSignup() {
+      if (!this.form.email_id || !this.form.password) {
+        this.error = "Please fill in all fields";
+        return;
+      }
+
+      this.localLoading = true;
+      this.error = '';
+      
+      try {
+        await this.$store.dispatch('signup', this.form);
+        const firstName = this.form.full_name.split(' ')[0];
+        this.$notify(`Account created! Welcome, ${firstName}.`, 'success');
+        this.$router.push('/login');
+      } catch (err) {
+        this.error = err;
+      } finally {
+        this.localLoading = false;
+      }
+    }
+  }
+};
+
+</script>
