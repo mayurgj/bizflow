@@ -1,7 +1,3 @@
-
-/**
- * CLIENT CLASSES
- */
 class SupabaseClient {
   constructor(url, key, schema = 'public') {
     this.url = (url || CONFIG.DATABASE.dbUrl).replace(/\/$/, '') + '/rest/v1';
@@ -64,7 +60,6 @@ class SupabaseQuery {
     }
   }
 
-  // --- Filter Methods (Return new instances) ---
   eq(column, value) {
     const q = this._clone();
     q.queryParams.push(`${column}=eq.${encodeURIComponent(value)}`);
@@ -126,7 +121,6 @@ class SupabaseQuery {
     return q;
   }
 
-  // --- Execution Methods ---
   select(columns = '*') {
     const q = this._clone();
     q.queryParams.unshift(`select=${encodeURIComponent(columns)}`);

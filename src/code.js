@@ -1,18 +1,14 @@
-/**
- * CONFIGURATION
- */
 var CONFIG = {
   TITLE: "BizFlow",
   DATABASE: {
     dbUrl: PropertiesService.getScriptProperties().getProperty('SUPABASE_URL'),
     dbKey: PropertiesService.getScriptProperties().getProperty('SUPABASE_ANON_KEY'),
-    // ADD A SALT HERE for password security
     hashSalt: "session" 
   },
   SCHEMA: {},
 };
 
-function doGet(request) {
+function doGet() {
   return HtmlService.createTemplateFromFile('index')
         .evaluate()
         .setTitle(CONFIG.TITLE)

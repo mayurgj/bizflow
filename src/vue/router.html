@@ -3,77 +3,83 @@
 <?!= include_('vue/pages/Auth') ?>
 <?!= include_('vue/pages/Dashboard') ?>
 <?!= include_('vue/pages/Purchase') ?>
+<?!= include_('vue/pages/Sales') ?>
+<?!= include_('vue/pages/Outstanding') ?>
+
+
+<!--
+
+Notes: 
+  - Routes are defined with meta information for navigation and authentication
+  - Components are included from separate files
+  - Navigation groups are defined in the menu items computed property
+  - If group icons are needed, they can be customized in the menuItems computed property
+  - If group is not defined, the route appears as a top-level item
+  - Page icons not necessary if group is defined
+
+-->
 
 <script>
 
 const routes = [
-  {
-    path: '/',
-    redirect: '/dashboard'
-  },
+  { path: '/', redirect: '/dashboard' },
   {
     path: '/dashboard',
     name: 'dashboard',
-    component: DashboardView,
-    meta: {
-      icon: 'mdi-view-dashboard',
-      title: 'Dashboard',
-      requiresAuth: true,
-      refreshActions: ['loadStock', 'loadOutstandings'] 
-    }
+    component: DashboardPage,
+    meta: { icon: 'mdi-view-dashboard', title: 'Dashboard', requiresAuth: true }
   },
   {
-    path: '/purchase',
-    name: 'purchase',
-    component: PurchaseView,
-    meta: {
-      title: 'Purchase',
-      icon: 'mdi-cart-outline',
-      requiresAuth: true,
-      group: 'Purchase', // This ensures it shows under the Purchase group in your sidebar
-      refreshActions: ['loadVouchers'] // The AppLayout will call this action on refresh
-    }
+    path: '/purchase/invoices',
+    name: 'purchase-invoices',
+    component: PurchaseInvoicePage,
+    meta: { title: 'Invoices', requiresAuth: true, group: 'Purchase' }
+  },
+  {
+    path: '/purchase/orders',
+    name: 'purchase-orders',
+    component: PurchaseOrderPage,
+    meta: { title: 'Orders',  requiresAuth: true, group: 'Purchase' }
+  },
+  {
+    path: '/sales/invoices',
+    name: 'sales-invoices',
+    component: SalesInvoicePage,
+    meta: { title: 'Invoices', requiresAuth: true, group: 'Sales' }  
+  },
+  {
+    path: '/sales/orders',
+    name: 'sales-orders',
+    component: SalesOrderPage,
+    meta: { title: 'Orders', requiresAuth: true, group: 'Sales' },
+  },
+  {
+    path: '/outstanding',
+    name: 'outstanding',
+    component: OutstandingPage,
+    meta: { title: 'Outstanding', icon: 'mdi-cart-outline', requiresAuth: true },
   },
   {
     path: '/login',
     name: 'login',
-    component: LoginView,
-    meta: {
-      hideNav: true,
-      title: 'Login',
-      requiresAuth: false
-    }
+    component: LoginPage,
+    meta: { hideNav: true, title: 'Login', requiresAuth: false }
   },
   {
     path: '/signup',
     name: 'signup',
-    component: SignupView,
-    meta: {
-      hideNav: true,
-      title: 'Sign Up',
-      requiresAuth: false
-    }
+    component: SignupPage,
+    meta: { hideNav: true, title: 'Sign Up', requiresAuth: false }
   },
-  // Catch-all route
-  {
-    path: '*',
-    redirect: '/dashboard'
-  }
+  { path: '*', redirect: '/dashboard' }
 ];
 
-/**
- * ROUTER INSTANCE
- */
 const router = new VueRouter({
   mode: 'hash',
   routes,
-  // Ensure page scrolls to top on navigation
   scrollBehavior: () => ({ y: 0 })
 });
 
-/**
- * NAVIGATION GUARDS
- */
 router.beforeEach((to, from, next) => {
   const user = store.state.user || getValidUser();
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth !== false);

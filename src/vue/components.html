@@ -2,7 +2,7 @@
 const AppLayout = Vue.component('app-layout', {
   data() {
     return {
-      drawer: null, // 'null' helps Vuetify decide based on screen size
+      drawer: null,
       appIcon: 'wind-power',
       appTitle: 'BizFlow',
       subTitle: 'CRM Dashboard'
@@ -10,18 +10,14 @@ const AppLayout = Vue.component('app-layout', {
   },
 
   computed: {
-    // Standard mapping
     ...Vuex.mapState(['loading', 'user']),
     
     isDark() {
       return this.$vuetify.theme.dark;
     },
-    
-    // Corrected Snackbar handling
     snackbar: {
       get() { return this.$store.state.snackbar; },
       set(val) { 
-        // We only care about setting 'show' to false when the user closes it
         if (!val) {
           this.$store.commit('SET_DATA', { 
             key: 'snackbar', 
@@ -39,7 +35,6 @@ const AppLayout = Vue.component('app-layout', {
       return ['/login', '/signup'].includes(this.$route.path);
     },
 
-    // REACTIVE: Pulls directly from the Vuex store
     currentUser() {
       return this.user || { name: 'Guest User', email: '' };
     },
@@ -53,7 +48,6 @@ const AppLayout = Vue.component('app-layout', {
     },
 
     menuItems() {
-      // Use this.$router.options.routes or a hardcoded list for better control
       const routes = this.$router.options.routes.filter(r => r.meta && !r.meta.hideNav);
       const menu = [];
       const groups = {};
@@ -95,7 +89,6 @@ const AppLayout = Vue.component('app-layout', {
       if (actions && Array.isArray(actions)) {
         this.$notify('Refreshing data...', 'info', 2000);
         actions.forEach(action => {
-          // Safer way to dispatch without hitting private _actions
           this.$store.dispatch(action).catch(e => console.warn(`Action ${action} failed`, e));
         });
       } else {
@@ -232,17 +225,17 @@ const AppLayout = Vue.component('app-layout', {
   `
 });
 
-var ComingSoon = Vue.component('coming-soon', {
-                  template: `
-                    <v-card flat class="d-flex flex-column align-center justify-center pa-10 transparent">
-                      <v-icon size="64" color="grey lighten-1">mdi-hammer-wrench</v-icon>
-                      <div class="text-h5 grey--text text--darken-1 mt-4 font-weight-bold">
-                        Coming Soon
-                      </div>
-                      <div class="text-body-1 grey--text mt-2">
-                        We are working hard to bring this feature to life.
-                      </div>
-                    </v-card>
-                  `
+const ComingSoon = Vue.component('coming-soon', {
+    template: `
+      <v-card flat class="d-flex flex-column align-center justify-center pa-10 transparent">
+        <v-icon size="64" color="grey lighten-1">mdi-hammer-wrench</v-icon>
+        <div class="text-h5 grey--text text--darken-1 mt-4 font-weight-bold">
+          Coming Soon
+        </div>
+        <div class="text-body-1 grey--text mt-2">
+          We are working hard to bring this feature to life.
+        </div>
+      </v-card>
+    `
 });
 </script>
